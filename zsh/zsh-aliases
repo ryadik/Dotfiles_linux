@@ -1,0 +1,40 @@
+#!/usr/bin/env zsh
+
+DOTFILES_ZSHRC="${LINUX_DOTFILES_DIR:-$HOME/.dotfiles/linux}/zsh/.zshrc"
+SOURCE_FILE="${ZDOTDIR:-$HOME}/.zshrc"
+[[ -f "$DOTFILES_ZSHRC" ]] && SOURCE_FILE="$DOTFILES_ZSHRC"
+
+[[ ! -f "$SOURCE_FILE" ]] && { echo "Error: .zshrc not found" >&2; exit 1; }
+
+extract_aliases() {
+  grep -E '^alias ' "$SOURCE_FILE" | sed 's/^alias //' | sort
+}
+
+_copy_to_clipboard() {
+  if command -v xclip &>/dev/null; then
+    echo "$1" | xclip -selection clipboard
+  elif [ -n "$TMUX" ]; then
+    tmux set-buffer "$1"
+    echo "(copied to tmux buffer)"
+  else
+    echo "$1"
+  fi
+}
+
+if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
+  extract_aliases | fzf \
+    --height 100% \
+    --layout=default \
+    --border=rounded \
+    --marker='✓' \
+    --pointer='►' \
+    --color='fg:#c0caf5,bg:#1a1b26,hl:#bb9af7,fg+:#c0caf5,bg+:#292e42,hl+:#bb9af7,info:#7dcfff,prompt:#7dcfff,pointer:#7dcfff,marker:#bb9af7,preview-bg:#1f2335,border:#7dcfff' \
+    --preview 'echo {} | cut -d"=" -f1' \
+    --preview-window='right,30%,border-rounded' \
+    --header "Search aliases. ENTER: Copy name | CTRL-C: Exit" \
+    --bind "ctrl-c:abort" \
+    --bind "enter:execute(echo {} | cut -d'=' -f1 | tr -d ' ' | xclip -selection clipboard 2>/dev/null || tmux set-buffer \$(echo {} | cut -d'=' -f1 | tr -d ' ') 2>/dev/null)+abort"
+  exit 0
+fi
+
+extract_aliases | grep -i --color=always "$*"
