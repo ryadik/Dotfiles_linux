@@ -62,12 +62,23 @@ if ! command_exists lazygit; then
 fi
 
 # --- 4. neovim ---
-if ! command_exists nvim; then
+nvim_needs_install() {
+  ! command_exists nvim && return 0
+  local ver major minor
+  ver=$(nvim --version 2>/dev/null | head -1 | grep -oP '\d+\.\d+\.\d+')
+  major=$(echo "$ver" | cut -d. -f1)
+  minor=$(echo "$ver" | cut -d. -f2)
+  # require >= 0.11.0 (AstroNvim requirement)
+  [ "$major" -gt 0 ] || [ "$minor" -ge 11 ] && return 1
+  return 0
+}
+if nvim_needs_install; then
   log_info "Installing neovim (latest stable)..."
   NVIM_VERSION=$(curl -s "https://api.github.com/repos/neovim/neovim/releases/latest" | grep tag_name | cut -d'"' -f4)
-  wget -qO /tmp/nvim.appimage "https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux-x86_64.appimage"
-  chmod +x /tmp/nvim.appimage
-  sudo mv /tmp/nvim.appimage /usr/local/bin/nvim
+  wget -qO /tmp/nvim.tar.gz "https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux-x86_64.tar.gz"
+  sudo tar xzf /tmp/nvim.tar.gz -C /opt/
+  sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
+  rm /tmp/nvim.tar.gz
   log_success "neovim ${NVIM_VERSION} installed"
 fi
 
